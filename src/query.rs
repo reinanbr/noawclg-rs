@@ -120,7 +120,7 @@ impl GetNoaaData {
     }
 
     /// Wrap an already-built [`GfsDataset`] directly, bypassing
-    /// [`GfsDatasetManager`] entirely — useful for datasets loaded from
+    /// [`GfsDatasetManager`] entirely, useful for datasets loaded from
     /// disk via [`crate::persistence`], or for tests that want to exercise
     /// [`Self::get_data_from_point`] / [`Self::get_time_series`] without a
     /// network-backed build step.
@@ -269,7 +269,7 @@ struct NominatimResult {
 /// same service `geopy.geocoders.Nominatim` calls in Python).
 pub fn geocode(place: &str) -> Result<(f64, f64)> {
     let client = reqwest::blocking::Client::builder()
-        .user_agent("noawclg-rs/2.3.0")
+        .user_agent(concat!("noawclg-rs/", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(10))
         .build()?;
 

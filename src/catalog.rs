@@ -67,7 +67,7 @@ macro_rules! var {
     };
 }
 
-/// Full GFS variable catalogue — maps short name to metadata.
+/// Full GFS variable catalogue: maps short name to metadata.
 pub static VARIABLES: LazyLock<HashMap<&'static str, VarConfig>> = LazyLock::new(|| {
     let mut m = HashMap::new();
 

@@ -11,8 +11,8 @@
 //!   feature isn't compiled in (proving the example fails predictably
 //!   rather than hanging or panicking).
 //!
-//! The one example that truly needs a real socket — downloading a GFS
-//! GRIB2 file — is exercised for real in `tests/integration_live_tests.rs`
+//! The one example that truly needs a real socket, downloading a GFS
+//! GRIB2 file, is exercised for real in `tests/integration_live_tests.rs`
 //! (opt-in, `cargo test -- --ignored`), always against a date within
 //! NOMADS's rolling few-day retention window via `auto_date`, never a
 //! hardcoded date.
@@ -28,7 +28,7 @@ use noawclg::{
     auto_date, GetNoaaData, GfsDataset, GfsVariable, MULTILEVEL_VARS, SURFACE_VARS, VARIABLES,
 };
 
-// ── "auto_date — pick the latest available GFS cycle" ──────────────────
+// ── "auto_date: pick the latest available GFS cycle" ──────────────────
 
 #[test]
 fn auto_date_returns_dd_mm_yyyy_and_valid_cycle() {
@@ -60,7 +60,7 @@ fn hour_sequence_constants_have_documented_shape() {
     assert_eq!(*HOURS_16DAYS_3H.last().unwrap(), 384);
 }
 
-// ── "GfsDatasetManager — full control ... Persist and reload" ──────────
+// ── "GfsDatasetManager: full control ... Persist and reload" ──────────
 
 fn sample_dataset() -> GfsDataset {
     let time = vec![
@@ -127,7 +127,7 @@ fn persist_and_reload_via_netcdf_is_feature_disabled_without_netcdf_io() {
     assert!(matches!(err, noawclg::Error::FeatureDisabled("netcdf-io")));
 }
 
-// ── "GetNoaaData — query by coordinates or place name" ─────────────────
+// ── "GetNoaaData: query by coordinates or place name" ─────────────────
 
 #[test]
 fn get_noaa_data_example_shape() {
@@ -250,8 +250,8 @@ fn heat_index_matches_known_reference_point() {
 
 #[test]
 fn heat_index_over_the_full_point_series() {
-    // `HI = (T, RH) -> (T, RH) applied elementwise over pt["t2m"], pt["r2"]`
-    // — the literal shape of the README's heat-index example.
+    // `HI = (T, RH) -> (T, RH) applied elementwise over pt["t2m"], pt["r2"]`,
+    // the literal shape of the README's heat-index example.
     let pt = synthetic_point_series();
     let hi: Vec<f64> = pt
         .t2m
@@ -375,7 +375,7 @@ fn pressure_gradient_and_tendency_and_anomaly() {
 
 #[test]
 fn spatial_pressure_gradient_over_a_grid() {
-    // prmsl: (time, lat, lon) — mirrors `np.gradient(prmsl, axis=(1,2))`,
+    // prmsl: (time, lat, lon). Mirrors `np.gradient(prmsl, axis=(1,2))`,
     // applied here per axis via the same `gradient_1d` helper along each row/column.
     let field = Array3::from_shape_fn((2, 4, 5), |(t, la, lo)| {
         1010.0 + t as f64 + la as f64 * 0.5 - lo as f64 * 0.3
@@ -528,7 +528,7 @@ fn variable_catalogue_iteration_example() {
     }
 }
 
-// ── "Ocean data — GODAS & ERSST" / "ENSO diagnostics" ────────────────────
+// ── "Ocean data: GODAS & ERSST" / "ENSO diagnostics" ────────────────────
 // Every live-fetch example needs `netcdf-io`; without it, each must fail
 // deterministically and offline (never attempt a socket).
 
@@ -578,7 +578,7 @@ mod ocean_examples_without_netcdf_io {
     }
 }
 
-// classify_enso needs no network at all — this is the literal README
+// classify_enso needs no network at all: this is the literal README
 // example, unmodified, since it's already fully offline.
 #[test]
 fn classify_enso_example_needs_no_network() {

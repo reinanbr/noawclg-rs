@@ -1,5 +1,5 @@
 //! Port of `tests/test_ocean.py` (Python), exercised through `noawclg`'s
-//! public API only — this also double-checks that every type needed to use
+//! public API only. This also double-checks that every type needed to use
 //! the ocean/ENSO API is actually re-exported from the crate root.
 
 use chrono::NaiveDate;
@@ -48,7 +48,7 @@ fn godas_levels_has_40_entries() {
     assert_eq!(*GODAS_LEVELS.last().unwrap(), 4478.0);
 }
 
-// ── ENSO index math (pure — no network required) ────────────────────────
+// ── ENSO index math (pure, no network required) ────────────────────────
 
 fn synthetic_sst(mean: f64, amplitude: f64, n: usize) -> TimeSeries {
     let index = monthly_index(2015, n);
@@ -99,7 +99,7 @@ fn enso_summary_rows_have_valid_phases() {
     }
 }
 
-// ── Thermocline (D20) and Warm Water Volume — built from a synthetic Field4 ──
+// ── Thermocline (D20) and Warm Water Volume, built from a synthetic Field4 ──
 
 fn synthetic_pottmp_field() -> Field4 {
     let time = monthly_index(2024, 12);

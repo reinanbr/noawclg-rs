@@ -6,40 +6,51 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 This crate is a Rust port of the Python
-[`noawclg`](https://github.com/reinanbr/noawclg) package; version numbers
+[`noawclg`](https://github.com/reinanbr/noawclg) package. Version numbers
 track the Python package's version they were ported from, not a separate
 sequence.
 
 ---
 
-## [2.3.0] — 2026-07-31
+## [2.3.1] - 2026-07-31
+
+### Changed
+- Documentation cleanup across the README, CHANGELOG, and all doc
+  comments: em dashes replaced with plain punctuation throughout.
+- The Nominatim geocoding client's `User-Agent` header is now derived
+  from `CARGO_PKG_VERSION` at compile time instead of a hand-maintained
+  literal, so it can't drift from the crate version again.
+
+No functional changes.
+
+## [2.3.0] - 2026-07-31
 
 ### Added
 
-Initial Rust release — a module-for-module port of `noawclg` 2.3.0.
+Initial Rust release: a module-for-module port of `noawclg` 2.3.0.
 
 #### GFS weather forecasts
-- `catalog` — the full 47-entry `VARIABLES` catalogue, `SURFACE_VARS` /
+- `catalog`: the full 47-entry `VARIABLES` catalogue, `SURFACE_VARS` /
   `MULTILEVEL_VARS`, and the `HOURS_5DAYS_1H` / `HOURS_10DAYS_3H` /
   `HOURS_16DAYS_3H` / `HOURS_16DAYS` forecast-hour sequences.
-- `coords` — `BoundingBox`, `auto_date`, `find_dim`, `normalize_lon`,
+- `coords`: `BoundingBox`, `auto_date`, `find_dim`, `normalize_lon`,
   `parse_date`.
-- `http` — the NOMADS grib-filter URL builder and an injectable
-  `Fetcher` trait (real `ReqwestFetcher` + in-memory `FakeFetcher` for
+- `http`: the NOMADS grib-filter URL builder and an injectable
+  `Fetcher` trait (real `ReqwestFetcher` plus in-memory `FakeFetcher` for
   tests) standing in for the Python tests' `unittest.mock` patches.
-- `gfs_dataset::GfsDatasetManager` — cached, retrying GRIB2 download
-  (`download_hours`) always available; `build_dataset` /
+- `gfs_dataset::GfsDatasetManager`: cached, retrying GRIB2 download
+  (`download_hours`) always available. `build_dataset` and
   `build_multi_dataset` decode via the pure-Rust `gribberish` crate,
   gated behind the `grib` feature.
-- `query::GetNoaaData` — point/place queries (`get_data_from_point`,
+- `query::GetNoaaData`: point/place queries (`get_data_from_point`,
   `get_data_from_place` via Nominatim geocoding, `get_time_series`),
   `view::DatasetView`, and the `load()` one-liner.
-- `persistence` — a self-contained Zarr v2 writer/reader (always
+- `persistence`: a self-contained Zarr v2 writer/reader (always
   available, no external dependency) and NetCDF4 save/load gated behind
   the `netcdf-io` feature.
 
 #### Ocean data & ENSO diagnostics
-- `ocean` — `open_godas` / `get_godas` and the typed wrappers
+- `ocean`: `open_godas` / `get_godas` and the typed wrappers
   (`get_ocean_temp`, `get_salinity`, `get_currents`, `get_ssh`),
   `open_ersst`, `get_sst_series`, `get_nino_anomaly`, `get_oni`,
   `classify_enso`, `get_thermocline_depth` (D20), `get_warm_water_volume`
@@ -49,11 +60,11 @@ Initial Rust release — a module-for-module port of `noawclg` 2.3.0.
   that OPeNDAP access itself requires.
 
 ### Feature flags
-- *(default)* — pure logic only, no system dependencies.
-- `grib` — real GRIB2 decoding via [`gribberish`](https://crates.io/crates/gribberish).
-- `netcdf-io` — GODAS/ERSST/NetCDF4 via the [`netcdf`](https://crates.io/crates/netcdf)
+- *(default)*: pure logic only, no system dependencies.
+- `grib`: real GRIB2 decoding via [`gribberish`](https://crates.io/crates/gribberish).
+- `netcdf-io`: GODAS/ERSST/NetCDF4 via the [`netcdf`](https://crates.io/crates/netcdf)
   crate (requires system `libnetcdf` built with DAP support).
-- `full` — both of the above.
+- `full`: both of the above.
 
 ### Testing
 - 139 tests with default features (147 with `--features grib`): unit
@@ -61,13 +72,13 @@ Initial Rust release — a module-for-module port of `noawclg` 2.3.0.
   suite that exercises every README example and every
   `test_gfs_dataset.py` / `test_main.py` / `test_ocean.py` case from the
   Python test suite through the public API only.
-- `tests/integration_live_tests.rs` — opt-in (`cargo test -- --ignored`)
+- `tests/integration_live_tests.rs`: opt-in (`cargo test -- --ignored`)
   real NOMADS network tests, always resolving dates dynamically via
   `auto_date` rather than a hardcoded date, matching NOMADS's rolling
   few-day retention window.
 
 ### Known limitations
-- No plotting — `plots.py` lives outside the Python `noawclg` package
+- No plotting. `plots.py` lives outside the Python `noawclg` package
   itself, so it's out of scope for this port.
 - `grib_decode.rs` is written against `gribberish`'s documented API but
   has not been exercised against a real downloaded GFS file in the

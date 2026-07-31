@@ -1,4 +1,4 @@
-//! Port of `tests/test_gfs_dataset.py::TestZarr` (Python) — the Rust crate's
+//! Port of `tests/test_gfs_dataset.py::TestZarr` (Python). The Rust crate's
 //! Zarr path is a real, self-contained writer/reader (not mocked the way
 //! the Python tests have to mock `xr.Dataset.to_zarr`/`.chunk()` to dodge a
 //! Dask dependency), so this is a genuine on-disk round trip through the

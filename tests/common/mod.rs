@@ -2,7 +2,7 @@
 //!
 //! This is the Rust equivalent of the `unittest.mock.patch.object(mgr._session,
 //! "get", ...)` pattern used throughout `tests/test_gfs_dataset.py` in the
-//! Python repo — except here the substitution point is a real trait
+//! Python repo, except here the substitution point is a real trait
 //! (`noawclg::http::Fetcher`) rather than monkeypatching a method, so it's
 //! checked by the compiler.
 
@@ -33,7 +33,7 @@ impl Canned {
     }
 }
 
-/// Shared handle onto a [`FakeFetcher`]'s call log — keep this before
+/// Shared handle onto a [`FakeFetcher`]'s call log. Keep this before
 /// moving the fetcher into a `Box<dyn Fetcher>` so you can still inspect
 /// what was requested afterwards (mirrors asserting on `mock_get.call_args`
 /// in the Python tests).
@@ -94,7 +94,7 @@ impl FakeFetcher {
         }
     }
 
-    /// A cloneable handle to this fetcher's call log — take this *before*
+    /// A cloneable handle to this fetcher's call log. Take this *before*
     /// boxing the fetcher and handing it to `GfsDatasetManager::with_fetcher`.
     pub fn log(&self) -> CallLog {
         self.log.clone()

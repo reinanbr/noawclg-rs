@@ -1,4 +1,4 @@
-//! Ocean data access — GODAS subsurface fields and ENSO diagnostics.
+//! Ocean data access: GODAS subsurface fields and ENSO diagnostics.
 //!
 //! Direct port of `noawclg/ocean.py`. The library is split in two layers:
 //!
@@ -154,7 +154,7 @@ const KGK_TO_PSU: f64 = 1000.0;
 // Core field types
 // ══════════════════════════════════════════════════════════════════════════
 
-/// A `(time, lat, lon)` gridded field — GODAS surface variables (`sshg`),
+/// A `(time, lat, lon)` gridded field: GODAS surface variables (`sshg`),
 /// depth-selected GODAS variables, or ERSST SST.
 #[derive(Debug, Clone)]
 pub struct Field3 {
@@ -166,7 +166,7 @@ pub struct Field3 {
     pub units: String,
 }
 
-/// A `(time, level, lat, lon)` gridded field — GODAS variables with depth
+/// A `(time, level, lat, lon)` gridded field: GODAS variables with depth
 /// levels, before depth selection.
 #[derive(Debug, Clone)]
 pub struct Field4 {
@@ -342,7 +342,7 @@ fn mask_and_convert<D: ndarray::Dimension>(
 // Raw (unprocessed) data, as it would come straight off OPeNDAP
 // ══════════════════════════════════════════════════════════════════════════
 
-/// Unmasked, unconverted GODAS data straight off OPeNDAP — the Rust
+/// Unmasked, unconverted GODAS data straight off OPeNDAP: the Rust
 /// equivalent of the synthetic `xr.Dataset` built by
 /// `tests/test_ocean.py::_make_godas_ds`.
 #[derive(Debug, Clone)]
@@ -365,7 +365,7 @@ pub enum RawGodas {
 }
 
 /// Apply masking, unit conversion, depth selection and region cropping to
-/// raw GODAS data. Pure and always compiled — this is the part of
+/// raw GODAS data. Pure and always compiled: this is the part of
 /// `open_godas` that `tests/test_ocean.py` actually exercises (network I/O
 /// is mocked out in every Python test).
 ///
@@ -487,7 +487,7 @@ pub fn concat_years(mut pieces: Vec<OceanField>) -> Result<OceanField> {
 // Time series
 // ══════════════════════════════════════════════════════════════════════════
 
-/// A monthly time series — the Rust analogue of a `pd.Series` with a
+/// A monthly time series: the Rust analogue of a `pd.Series` with a
 /// `DatetimeIndex`.
 #[derive(Debug, Clone)]
 pub struct TimeSeries {
@@ -544,7 +544,7 @@ impl TimeSeries {
         var.sqrt()
     }
 
-    /// Centered 3-sample rolling mean with `min_periods = 3` — mirrors
+    /// Centered 3-sample rolling mean with `min_periods = 3`. Mirrors
     /// `.rolling(window=3, center=True, min_periods=3).mean()`.
     pub fn rolling_mean_centered3(&self, name: impl Into<String>) -> TimeSeries {
         let n = self.values.len();
@@ -565,7 +565,7 @@ impl TimeSeries {
     }
 
     /// Mean value per calendar month (1–12) over years in `[clim_start,
-    /// clim_end]` — mirrors the monthly-climatology groupby in
+    /// clim_end]`. Mirrors the monthly-climatology groupby in
     /// `ocean.get_nino_anomaly`.
     fn monthly_climatology(&self, clim_start: i32, clim_end: i32) -> HashMap<u32, f64> {
         let mut sums: HashMap<u32, (f64, usize)> = HashMap::new();
@@ -608,7 +608,7 @@ pub fn nino_anomaly_from_series(
     TimeSeries::new(index, values, format!("{}_anom", sst.name))
 }
 
-/// Oceanic Niño Index — 3-month centered running mean of the Niño 3.4
+/// Oceanic Niño Index: 3-month centered running mean of the Niño 3.4
 /// anomaly. Mirrors `ocean.get_oni` (minus the network fetch).
 pub fn oni_from_series(
     sst_nino34: &TimeSeries,
@@ -711,14 +711,14 @@ pub fn enso_summary_from_series(
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// D20 thermocline depth & Warm Water Volume (pure — operate on Field4)
+// D20 thermocline depth & Warm Water Volume (pure, operate on Field4)
 // ══════════════════════════════════════════════════════════════════════════
 
-/// Depth (m) of the `isotherm_temp` °C isotherm — the D20 index, computed
+/// Depth (m) of the `isotherm_temp` °C isotherm: the D20 index, computed
 /// from an already-fetched, region-cropped `pottmp` field (°C).
 ///
 /// Mirrors `ocean.get_thermocline_depth` (minus the network fetch, and
-/// operating on a single year's field rather than looping years — call this
+/// operating on a single year's field rather than looping years. Call this
 /// once per year and concatenate with [`Field3::select_region`] /
 /// `ndarray::concatenate` as needed, exactly like `get_thermocline_depth`
 /// does internally in Python).
@@ -1203,7 +1203,7 @@ mod live {
 pub use live::*;
 
 // ══════════════════════════════════════════════════════════════════════════
-// Stubs for when `netcdf-io` is not compiled in — same signatures as
+// Stubs for when `netcdf-io` is not compiled in: same signatures as
 // `live`, so downstream code (and this crate's own README examples) can be
 // written once and fail predictably at runtime rather than not compiling
 // at all when the feature is off. Mirrors the `grib`/`not(grib)` split in

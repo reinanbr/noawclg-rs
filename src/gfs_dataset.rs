@@ -1,4 +1,4 @@
-//! GFS Dataset Manager — download, parse, and assemble gridded datasets.
+//! GFS Dataset Manager: download, parse, and assemble gridded datasets.
 //!
 //! Downloads one GRIB2 file per forecast hour via the NOMADS grib-filter
 //! endpoint (all requested variables bundled in a single URL), then extracts
@@ -34,7 +34,7 @@ pub struct GfsVariable {
     pub units: String,
 }
 
-/// Gridded GFS dataset — the Rust analogue of the `xr.Dataset` returned by
+/// Gridded GFS dataset: the Rust analogue of the `xr.Dataset` returned by
 /// the Python library's `build_dataset` / `build_multi_dataset`.
 #[derive(Debug, Clone, Default)]
 pub struct GfsDataset {
@@ -54,7 +54,7 @@ impl GfsDataset {
     }
 
     /// `{variable: long_name}` for every data variable, plus the coordinate
-    /// variables — mirrors `get_noaa_data.get_keys()`.
+    /// variables. Mirrors `get_noaa_data.get_keys()`.
     pub fn keys(&self) -> std::collections::HashMap<String, String> {
         let mut out = std::collections::HashMap::new();
         for name in &self.var_order {
@@ -171,7 +171,7 @@ impl GfsDatasetManager {
         )
     }
 
-    /// Like [`Self::with_options`], but with the HTTP layer swapped out —
+    /// Like [`Self::with_options`], but with the HTTP layer swapped out,
     /// used by the crate's integration tests (`tests/gfs_dataset_tests.rs`)
     /// to substitute a canned [`Fetcher`] instead of hitting NOMADS for
     /// real, the same way the Python test suite mocks
@@ -292,7 +292,7 @@ impl GfsDatasetManager {
             return false;
         };
         if bytes.len() < 4 || &bytes[..4] != b"GRIB" {
-            // Not a GRIB file at all (e.g. an HTML error page) — treat as
+            // Not a GRIB file at all (e.g. an HTML error page). Treat as
             // "present" the way the Python `_is_valid_grib_file` does for
             // non-GRIB content (it only checks the trailing marker when the
             // header matches).

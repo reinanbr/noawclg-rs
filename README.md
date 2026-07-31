@@ -38,12 +38,12 @@ cargo build --features netcdf-io   # + GODAS/ERSST/NetCDF (needs libnetcdf-dev)
 cargo build --features full        # everything
 ```
 
-## Data freshness — always resolve dates dynamically
+## Data freshness: always resolve dates dynamically
 
-**NOMADS only serves a rolling window of recent GFS runs — treat anything
-older than 3 days back as unavailable.** Every example below resolves its
+**NOMADS only serves a rolling window of recent GFS runs.** Treat anything
+older than 3 days back as unavailable. Every example below resolves its
 date from "now" via [`auto_date`], never a hardcoded date. If you write your
-own code against this crate, do the same — a date more than a few days old
+own code against this crate, do the same: a date more than a few days old
 will 404. This is exactly why [`auto_date`]'s `lag_days` parameter exists:
 `auto_date(1)` targets yesterday's run, which is reliably published by the
 time you'd read this.
@@ -55,27 +55,27 @@ time you'd read this.
 All examples below are ported directly from the
 [Python README](https://github.com/reinanbr/noawclg#readme) and exercised
 in `tests/readme_examples_tests.rs` (offline, against synthetic/in-memory
-data standing in for a real download or OPeNDAP fetch — see that file's
+data standing in for a real download or OPeNDAP fetch; see that file's
 module doc for exactly which Python example each test corresponds to).
 `tests/integration_live_tests.rs` additionally hits the *real* NOMADS
 service for the download step (run with `cargo test -- --ignored`).
 
 ### GFS weather forecasts
 
-#### `auto_date` — pick the latest available GFS cycle
+#### `auto_date`: pick the latest available GFS cycle
 
 ```rust
 use noawclg::auto_date;
 
 let (date, cycle) = auto_date(1);
-// date  -> "30/07/2026"  (DD/MM/YYYY — always this format)
+// date  -> "30/07/2026"  (DD/MM/YYYY, always this format)
 // cycle -> "12"          (00 / 06 / 12 / 18)
 ```
 
-#### `load` — quick download as a `GfsDataset`
+#### `load`: quick download as a `GfsDataset`
 
 Requires the `grib` feature to actually decode the downloaded GRIB2 files.
-There are no `lat=`/`lon=` parameters — to query a single point, use
+There are no `lat=`/`lon=` parameters; to query a single point, use
 [`GetNoaaData::get_data_from_point`](#get_noaa_data--query-by-coordinates-or-place-name)
 instead.
 
@@ -110,7 +110,7 @@ let ds = load(&date, &cycle, vec!["t2m".into()], HOURS_5DAYS_1H.clone(), None)?;
 | `HOURS_16DAYS_3H` | 0–384 h | 3 h |
 | `HOURS_16DAYS` | 0–120 h @ 6 h + 123–384 h @ 3 h | mixed |
 
-#### `GfsDatasetManager` — full control over download and storage
+#### `GfsDatasetManager`: full control over download and storage
 
 `GfsDatasetManager` takes `date` in **`YYYYMMDD`** format (`auto_date`
 returns `DD/MM/YYYY`; convert with `noawclg::coords::parse_date`).
@@ -142,7 +142,7 @@ persistence::save_netcdf(&ds, "forecast.nc")?;              // needs `netcdf-io`
 let ds3 = persistence::load_netcdf("forecast.nc")?;          // needs `netcdf-io`
 ```
 
-#### `GetNoaaData` — query by coordinates or place name
+#### `GetNoaaData`: query by coordinates or place name
 
 Date format is `DD/MM/YYYY`, same as `auto_date`'s output.
 
@@ -181,16 +181,16 @@ let raw = gfs.dataset();
 ### Mathematical analysis examples
 
 All examples below assume a dataset loaded as in the `load` example, plus a
-single grid point selected — the same shape of computation the Python
+single grid point selected: the same shape of computation the Python
 README does with `numpy`/`pandas`/`scipy`, translated to plain Rust +
 `ndarray` (this crate's numeric dependency, no extra math crate required).
 A few Python examples that lean on `scipy.signal`/`scipy.ndimage`
 (`find_peaks`, `gaussian_filter`, FFT dominant-period detection) are **not**
-ported — they'd need `rustfft`/an image-filtering crate, which is outside
+ported. They'd need `rustfft`/an image-filtering crate, which is outside
 `noawclg`'s own scope in either language (the Python versions are usage
 demos, not part of the `noawclg` package either).
 
-#### Temperature — heat index, anomaly, trend
+#### Temperature: heat index, anomaly, trend
 
 ```rust
 // Heat index (Rothfusz equation, °C in -> °C out)
@@ -237,7 +237,7 @@ let rh_check: Vec<f64> = t2m.iter().zip(&d2m).map(|(t, td)| {
 }).collect();
 ```
 
-#### Wind — speed, direction, stress, gusts
+#### Wind: speed, direction, stress, gusts
 
 ```rust
 // Scalar wind speed and meteorological direction (from, 0°=N)
@@ -264,7 +264,7 @@ fn beaufort(speed: f64) -> u8 {
 }
 ```
 
-#### Pressure — gradient and tendency
+#### Pressure: gradient and tendency
 
 ```rust
 use ndarray::Array3; // prmsl: (time, lat, lon), hPa
@@ -282,14 +282,14 @@ fn gradient_1d(vals: &[f64]) -> Vec<f64> {
     out
 }
 
-// Pressure tendency (hPa / 3h) at one point — central differences in time
+// Pressure tendency (hPa / 3h) at one point: central differences in time
 let tendency = gradient_1d(&prmsl_point); // already spaced 3 h apart per `hours`
 
 // Anomaly from the first step
 let p_anom: Vec<f64> = prmsl_point.iter().map(|p| p - prmsl_point[0]).collect();
 ```
 
-#### Precipitation — accumulation, exceedance
+#### Precipitation: accumulation, exceedance
 
 ```rust
 // prate is kg/m^2/s == mm/s; * 3600 -> mm/h, then * timestep(h) to accumulate
@@ -312,7 +312,7 @@ let prob_5mm: Vec<f64> = prate_all.outer_iter().map(|slice| {
 }).collect();
 ```
 
-#### CAPE — instability classification
+#### CAPE: instability classification
 
 ```rust
 // cape_now: Array2<f64> (lat, lon), J/kg, at one forecast hour
@@ -332,7 +332,7 @@ let frac_extreme: Vec<f64> = cape_all.outer_iter().map(|slice| {
 }).collect();
 ```
 
-#### Upper-air multi-level variables — vertical profiles
+#### Upper-air multi-level variables: vertical profiles
 
 ```rust
 let ds_ua = load(&date, &cycle, vec!["t".into(), "r".into(), "gh".into(), "u".into(), "v".into()],
@@ -370,9 +370,9 @@ for (key, meta) in VARIABLES.iter() {
 }
 ```
 
-### Ocean data — GODAS & ERSST
+### Ocean data: GODAS & ERSST
 
-All ocean data is served via **OPeNDAP** — nothing is downloaded to disk;
+All ocean data is served via **OPeNDAP**: nothing is downloaded to disk,
 access is lazy. Requires the `netcdf-io` feature.
 
 ```rust
@@ -462,26 +462,26 @@ let wwv = get_warm_water_volume(2020, 2024, 20.0, 300.0)?;
 
 ### Plotting
 
-Not ported — see [Known limitations](#known-limitations--honesty-notes).
+Not ported. See [Known limitations](#known-limitations--honesty-notes).
 
 ## Module map ↔ Python equivalent
 
 | Rust module | Python module | Notes |
 |---|---|---|
-| `catalog` | `noawclg/catalog.py` | `VARIABLES` (47 entries — the Python README says 43 but undercounts its own `catalog.py`), `HOURS_*` |
+| `catalog` | `noawclg/catalog.py` | `VARIABLES` (47 entries; the Python README says 43 but undercounts its own `catalog.py`), `HOURS_*` |
 | `coords` | `noawclg/coords.py` | `BoundingBox`, `auto_date`, `find_dim`, `normalize_lon`, `parse_date` |
 | `http` | `noawclg/http.py` | NOMADS grib-filter URL builder + HTTP client |
 | `gfs_dataset` | `noawclg/gfs_dataset.py` | Download/cache always on; decoding (`build_dataset`/`build_multi_dataset`) needs `grib` |
 | `grib_decode` | (`cfgrib` calls inside `gfs_dataset.py`) | GRIB2 → array decoding via `gribberish`, only compiled with `grib` |
 | `persistence` | `noawclg/persistence.py` | Zarr v2 (always on, self-contained writer/reader); NetCDF4 needs `netcdf-io` |
-| `ocean` | `noawclg/ocean.py` | Split into pure math (masking, region/depth selection, ENSO indices — always on) and live OPeNDAP fetch (needs `netcdf-io`) |
+| `ocean` | `noawclg/ocean.py` | Split into pure math (masking, region/depth selection, ENSO indices, always on) and live OPeNDAP fetch (needs `netcdf-io`) |
 | `query` | `noawclg/query.py` | `GetNoaaData`, Nominatim geocoding (plain HTTP, no `geopy` needed) |
 | `view` | `noawclg/view.py` | `DatasetView` |
 | `load` | `noawclg/load.py` | `load()` one-liner |
 
 `plots.py` and `enso_forecast.py` in the Python repo live outside the
 `noawclg` package itself (they're top-level scripts, not part of the
-importable library), so they're out of scope for this port — there is no
+importable library), so they're out of scope for this port. There is no
 Rust equivalent of `matplotlib`/`cartopy` plotting here.
 
 ## Known limitations / honesty notes
@@ -492,7 +492,7 @@ Rust equivalent of `matplotlib`/`cartopy` plotting here.
   documented `Message` API and compiles cleanly, but has not been
   exercised against a real downloaded GFS file in this environment (no
   network egress to NOMADS from the sandbox this was built in). Treat it
-  as a solid starting point, not a guarantee — if a real file decodes
+  as a solid starting point, not a guarantee. If a real file decodes
   incorrectly, the likely culprit is level-matching in
   `grib_decode::match_level` (isobaric level units aren't 100% pinned down
   by gribberish's docs) or message ordering.
@@ -501,7 +501,7 @@ Rust equivalent of `matplotlib`/`cartopy` plotting here.
   library needs `libeccodes-dev`/`netCDF4`. It was not build-tested in
   this environment because those system packages aren't installed here
   and installing them requires `sudo`.
-- **No plotting.** See above — out of scope by design, not an oversight.
+- **No plotting.** See above: out of scope by design, not an oversight.
 - **DataFrame equivalent.** Rust has no `pandas`/`xarray`. `TimeSeries` (a
   `Vec<NaiveDate>` + `Vec<f64>`) stands in for `pd.Series`;
   `DatasetView::to_table()` stands in for `.to_dataframe()` for the common
@@ -519,7 +519,7 @@ Two layers, mirroring the Python `tests/` suite one file at a time:
 
 | Rust | Ports (Python) | How |
 |---|---|---|
-| `src/**/*.rs` `#[cfg(test)] mod tests` (38 tests) | — | Unit tests with access to private internals (e.g. `cache_path`, `mask_and_convert`) |
+| `src/**/*.rs` `#[cfg(test)] mod tests` (38 tests) | n/a | Unit tests with access to private internals (e.g. `cache_path`, `mask_and_convert`) |
 | `tests/catalog_tests.rs` | `test_gfs_dataset.py::TestConstants` | Public API only |
 | `tests/gfs_dataset_tests.rs` | `test_gfs_dataset.py::TestInit/TestHelpers/TestDownloadHours/TestEdgeCases` | Public API + `common::FakeFetcher` |
 | `tests/query_view_tests.rs` | `test_main.py` | Public API + `GetNoaaData::from_dataset` |
@@ -531,7 +531,7 @@ The Python suite mocks network calls with `unittest.mock.patch.object(mgr._sessi
 instead of monkeypatching: `GfsDatasetManager` is generic over an
 `http::Fetcher` trait, and `tests/common/mod.rs::FakeFetcher` implements it
 in-memory (canned status/body per call, or a queue for retry scenarios),
-recording every URL requested so tests can assert on it — e.g.
+recording every URL requested so tests can assert on it, e.g.
 `gfs_dataset_tests.rs::var_params_shared_level_token_deduplicated` checks
 the exact grib-filter query string `download_hours` builds, without that
 method needing to be `pub`. No test in this crate opens a socket.

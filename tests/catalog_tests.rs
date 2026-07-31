@@ -1,4 +1,4 @@
-//! Port of `tests/test_gfs_dataset.py::TestConstants` (Python) — exercised
+//! Port of `tests/test_gfs_dataset.py::TestConstants` (Python), exercised
 //! here purely through `noawclg`'s public API.
 
 use noawclg::{

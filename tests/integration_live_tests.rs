@@ -1,4 +1,4 @@
-//! Port of `tests/test_gfs_dataset.py::TestIntegration` (Python) — real
+//! Port of `tests/test_gfs_dataset.py::TestIntegration` (Python): real
 //! network calls against NOMADS/NOAA. Skipped by default; opt in with:
 //!
 //! ```bash
@@ -9,7 +9,7 @@
 //! GFS history (empirically more, but treat 3 days back as the safe
 //! ceiling). Every test below resolves its date from "now" (never a
 //! hardcoded past date), exactly like [`noawclg::auto_date`] is meant to be
-//! used in real code — see the "GFS weather forecasts" section of the
+//! used in real code. See the "GFS weather forecasts" section of the
 //! crate README for the same guidance applied to library usage examples.
 
 use std::time::Duration;
@@ -19,7 +19,7 @@ use noawclg::http::{Fetcher, ReqwestFetcher};
 use noawclg::{GfsDatasetManager, Region};
 
 /// `noawclg`'s `download_hours` doesn't expose a bare "reachability" check,
-/// so — like the Python `test_nomads_reachable` — this talks to NOMADS
+/// so, like the Python `test_nomads_reachable`, this talks to NOMADS
 /// directly through the same [`Fetcher`] abstraction the rest of the crate
 /// uses (rather than pulling in a second HTTP client just for this probe).
 #[test]
@@ -44,7 +44,7 @@ fn filter_endpoint_reachable() {
 #[test]
 #[ignore = "hits the real network; run with `cargo test -- --ignored`"]
 fn downloads_a_single_real_hour_within_the_freshness_window() {
-    // Yesterday's 00Z run is always published by now — same reasoning as
+    // Yesterday's 00Z run is always published by now, same reasoning as
     // `auto_date(1)`, just with a fixed cycle so this test isn't sensitive
     // to what hour it happens to run at.
     let yesterday = (Utc::now() - ChronoDuration::days(1))
@@ -69,7 +69,7 @@ fn downloads_a_single_real_hour_within_the_freshness_window() {
 
     let files = mgr.download_hours(&["t2m"], &[0], false).unwrap();
     let Some(path) = files.get(&0) else {
-        eprintln!("NOMADS returned nothing for {yesterday} 00Z f000 — service unavailable, skipping assertion");
+        eprintln!("NOMADS returned nothing for {yesterday} 00Z f000: service unavailable, skipping assertion");
         return;
     };
     let size = std::fs::metadata(path).unwrap().len();

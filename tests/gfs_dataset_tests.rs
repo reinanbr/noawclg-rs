@@ -1,6 +1,6 @@
-//! Port of `tests/test_gfs_dataset.py` (Python) — `TestInit`, `TestHelpers`
+//! Port of `tests/test_gfs_dataset.py` (Python): `TestInit`, `TestHelpers`
 //! (via captured request URLs and returned cache paths, since the
-//! corresponding Rust methods are private — the same information the
+//! corresponding Rust methods are private, the same information the
 //! Python tests check by calling `mgr._region_params()` etc.),
 //! `TestDownloadHours`, and `TestEdgeCases`. Network I/O is replaced by
 //! `common::FakeFetcher`, never a real socket.
@@ -441,7 +441,7 @@ fn bounding_box_still_works_standalone() {
 
 #[test]
 fn retries_transient_server_error_then_succeeds() {
-    // First attempt hits a transient 503, the retry succeeds — mirrors
+    // First attempt hits a transient 503, the retry succeeds. Mirrors
     // NOMADS occasionally 503'ing under load.
     let (mgr, _dir, log) = mgr_with(
         FakeFetcher::queue(vec![Canned::status(503), Canned::ok(dummy_grib_bytes(200))]),

@@ -7,7 +7,7 @@ use std::time::Duration;
 const USER_AGENT: &str =
     "Mozilla/5.0 (compatible; GFS-downloader/2.0; +https://github.com/reinanbr/noawclg)";
 
-/// NOMADS grib-filter URL template — accepts multiple `&var_XXX=on&lev_XXX=on`.
+/// NOMADS grib-filter URL template. Accepts multiple `&var_XXX=on&lev_XXX=on`.
 pub const FILTER_BASE: &str = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25_1hr.pl";
 
 /// Build the grib-filter query URL for one forecast hour.
@@ -25,7 +25,7 @@ pub fn filter_url(
 
 /// Create a blocking [`reqwest::blocking::Client`] pre-configured for NOMADS.
 ///
-/// Applies a browser-like User-Agent header (required — NOMADS blocks the
+/// Applies a browser-like User-Agent header (required: NOMADS blocks the
 /// default `reqwest` agent with HTTP 403).
 ///
 /// Mirrors `noawclg.http._build_session`.
@@ -41,7 +41,7 @@ pub fn build_client(timeout: Duration) -> reqwest::Result<reqwest::blocking::Cli
 /// [`GfsDatasetManager`](crate::gfs_dataset::GfsDatasetManager) is generic
 /// over this trait instead of hard-wiring `reqwest`, the same way the
 /// Python library's tests substitute a `MagicMock` for
-/// `GFSDatasetManager._session.get` — except here the substitution is a
+/// `GFSDatasetManager._session.get`, except here the substitution is a
 /// real, statically-typed seam (see `tests/common/mod.rs::FakeFetcher` in
 /// the crate's integration tests) rather than monkeypatching.
 pub trait Fetcher: Send + Sync {

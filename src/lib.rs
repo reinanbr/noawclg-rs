@@ -4,18 +4,18 @@
 //!
 //! This is a Rust port of the [`noawclg`](https://pypi.org/project/noawclg/)
 //! Python package. It gives you a clean Rust API over two major NOAA data
-//! streams — **GFS weather forecasts** and **GODAS/ERSST ocean analyses** —
+//! streams, **GFS weather forecasts** and **GODAS/ERSST ocean analyses**,
 //! with no API key required.
 //!
 //! ## Feature flags
 //!
 //! * default: pure logic only (catalogue, coordinate helpers, GRIB2/OPeNDAP
-//!   download & caching machinery, ENSO math) — no system dependencies.
+//!   download & caching machinery, ENSO math), no system dependencies.
 //! * `grib`: decode downloaded GRIB2 files into [`gfs_dataset::GfsDataset`]s
 //!   via the pure-Rust [`gribberish`] crate (pulls in native jpeg2000/png
 //!   decoders at build time).
 //! * `netcdf-io`: GODAS/ERSST access over OPeNDAP and NetCDF4
-//!   save/load, via the [`netcdf`] crate — requires a system `libnetcdf`
+//!   save/load, via the [`netcdf`] crate. Requires a system `libnetcdf`
 //!   built with DAP support (same runtime requirement the Python library
 //!   has via `netCDF4`/`h5netcdf`).
 //! * `full`: both of the above.

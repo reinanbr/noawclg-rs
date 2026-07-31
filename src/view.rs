@@ -10,7 +10,7 @@ use ndarray::ArrayD;
 
 use crate::error::{Error, Result};
 
-/// One variable's data at a single `(lat, lon)` grid point — dims are
+/// One variable's data at a single `(lat, lon)` grid point. Dims are
 /// `["time"]` for surface variables or `["time", "level"]` for multilevel
 /// ones.
 #[derive(Debug, Clone)]
@@ -45,7 +45,7 @@ impl DatasetView {
     }
 
     /// Flatten every single-level (`["time"]`-only) variable into a table
-    /// of `{column: value}` rows, one per forecast time step — the
+    /// of `{column: value}` rows, one per forecast time step: the
     /// practical analogue of `.to_dataframe()` for the common case (a
     /// scalar time series per variable).
     pub fn to_table(&self) -> Vec<BTreeMap<String, f64>> {

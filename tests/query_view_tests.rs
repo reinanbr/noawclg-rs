@@ -1,4 +1,4 @@
-//! Port of `tests/test_main.py` (Python) — `TestHelpers`, `TestDatasetView`,
+//! Port of `tests/test_main.py` (Python): `TestHelpers`, `TestDatasetView`,
 //! `TestBoundingBox`, `TestGetNoaaData` (point/time-series selection; the
 //! network-backed dataset build itself is replaced by
 //! `GetNoaaData::from_dataset`, exactly like the Python tests replace
