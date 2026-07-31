@@ -1,0 +1,42 @@
+[package]
+name = "noawclg"
+version = "2.3.0"
+edition = "2021"
+rust-version = "1.80"
+authors = ["Reinan Br"]
+description = "Download, analyse and visualise NOAA atmospheric (GFS) and ocean (GODAS/ERSST) data. Rust port of the noawclg Python package."
+license = "GPL-3.0-or-later"
+readme = "README.md"
+repository = "https://github.com/reinanbr/noawclg-rs"
+homepage = "https://github.com/reinanbr/noawclg-rs"
+documentation = "https://docs.rs/noawclg"
+keywords = ["noaa", "weather", "gfs", "grib", "climate"]
+categories = ["science", "api-bindings"]
+exclude = ["/tests", "/.github"]
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+ndarray = "0.16"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+# Optional: real GRIB2 decoding for GFS (pure-Rust, but pulls in native
+# jpeg2000/png decoders at build time).
+gribberish = { version = "1.6", optional = true }
+
+# Optional: OPeNDAP + NetCDF4 access for GODAS/ERSST and NetCDF persistence.
+# Requires a system libnetcdf (same requirement the Python lib has on
+# eccodes/libnetcdf) - see README.
+netcdf = { version = "0.12", optional = true }
+
+[features]
+default = []
+grib = ["dep:gribberish"]
+netcdf-io = ["dep:netcdf"]
+full = ["grib", "netcdf-io"]
+
+[dev-dependencies]
+approx = "0.5"
+tempfile = "3"

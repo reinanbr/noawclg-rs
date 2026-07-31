@@ -1,0 +1,184 @@
+name: CI / CD
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt — check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy (default features)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: cargo clippy (grib feature)
+        run: cargo clippy --all-targets --features grib -- -D warnings
+
+  # ──────────────────────────────────────────────────────────────────────
+  test:
+    name: Test (${{ matrix.os }})
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo test (default features — no network, no system deps)
+        run: cargo test --all-targets
+
+      - name: cargo test --doc
+        run: cargo test --doc
+
+  # ──────────────────────────────────────────────────────────────────────
+  test-optional-features:
+    name: Test (grib + netcdf-io, Linux)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install libnetcdf (for the netcdf-io feature)
+        run: sudo apt-get update && sudo apt-get install -y libnetcdf-dev libhdf5-dev pkg-config
+
+      - name: cargo test --features full
+        run: cargo test --all-targets --features full
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Real network calls against NOMADS. Opt-in: runs on pushes to main and
+  # on manual dispatch, never on pull requests from forks.
+  integration:
+    name: Integration tests (real NOMADS)
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo test -- --ignored
+        run: cargo test -- --ignored
+        continue-on-error: true # NOMADS availability is outside our control
+
+  # ──────────────────────────────────────────────────────────────────────
+  build:
+    name: Package check
+    needs: [test, test-optional-features]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo package
+        run: cargo package --locked
+
+      - name: cargo publish --dry-run
+        run: cargo publish --dry-run --locked
+
+  # ──────────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish to crates.io
+    needs: [test, test-optional-features, build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/noawclg
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked
+
+  # ──────────────────────────────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog section for this release
+        id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          python3 - <<'EOF'
+          import re, pathlib, os
+          version = os.environ["VERSION"]
+          text = pathlib.Path("CHANGELOG.md").read_text()
+          pattern = rf"## \[{re.escape(version)}\].*?(?=\n## |\Z)"
+          match = re.search(pattern, text, re.S)
+          notes = match.group(0).strip() if match else "See CHANGELOG.md for details."
+          pathlib.Path(os.environ["GITHUB_OUTPUT"]).open("a").write(
+              f"NOTES<<EOF\n{notes}\nEOF\n"
+          )
+          EOF
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "noawclg ${{ steps.version.outputs.VERSION }}"
+          body: ${{ steps.changelog.outputs.NOTES }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
