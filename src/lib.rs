@@ -1,24 +1,35 @@
 //! # noawclg
 //!
-//! Download, analyse and visualise NOAA atmospheric and ocean data.
+//! Download, analyse and visualise NOAA atmospheric, DWD ICON global, and
+//! ocean data.
 //!
 //! This is a Rust port of the [`noawclg`](https://pypi.org/project/noawclg/)
-//! Python package. It gives you a clean Rust API over two major NOAA data
-//! streams, **GFS weather forecasts** and **GODAS/ERSST ocean analyses**,
-//! with no API key required.
+//! Python package, extended with DWD ICON global support. It gives you a
+//! clean Rust API over three data streams — **GFS weather forecasts**,
+//! **ICON global forecasts**, and **GODAS/ERSST ocean analyses** — with no
+//! API key required.
 //!
 //! ## Feature flags
 //!
 //! * default: pure logic only (catalogue, coordinate helpers, GRIB2/OPeNDAP
 //!   download & caching machinery, ENSO math), no system dependencies.
-//! * `grib`: decode downloaded GRIB2 files into [`gfs_dataset::GfsDataset`]s
-//!   via the pure-Rust [`gribberish`] crate (pulls in native jpeg2000/png
-//!   decoders at build time).
+//! * `grib`: decode downloaded GFS GRIB2 files into
+//!   [`gfs_dataset::GfsDataset`]s via the pure-Rust [`gribberish`] crate
+//!   (pulls in native jpeg2000/png decoders at build time).
 //! * `netcdf-io`: GODAS/ERSST access over OPeNDAP and NetCDF4
 //!   save/load, via the [`netcdf`] crate. Requires a system `libnetcdf`
 //!   built with DAP support (same runtime requirement the Python library
 //!   has via `netCDF4`/`h5netcdf`).
-//! * `full`: both of the above.
+//! * `icon`: decode DWD ICON global forecasts into the same
+//!   [`gfs_dataset::GfsDataset`] shape GFS uses, via [`icon_dataset`].
+//!   ICON's native grid is unstructured/icosahedral, so this shells out to
+//!   the system `cdo` tool for GRIB2 decoding and applies DWD's own
+//!   published nearest-neighbor remap table (see [`icon_grid`]) in pure
+//!   Rust to land the result on a regular lat/lon grid. Implies
+//!   `netcdf-io`; also requires `cdo` on `PATH` at runtime (checked with a
+//!   clear [`error::Error::MissingSystemDependency`], not a build-time
+//!   requirement). See the README's ICON section for install instructions.
+//! * `full`: all of the above.
 //!
 //! See the crate README for details and a module-by-module comparison with
 //! the original Python package.
@@ -30,6 +41,12 @@ pub mod gfs_dataset;
 #[cfg(feature = "grib")]
 pub mod grib_decode;
 pub mod http;
+#[cfg(feature = "icon")]
+pub mod icon_catalog;
+#[cfg(feature = "icon")]
+pub mod icon_dataset;
+#[cfg(feature = "icon")]
+pub mod icon_grid;
 pub mod load;
 pub mod ocean;
 pub mod persistence;
@@ -43,6 +60,8 @@ pub use catalog::{
 pub use coords::{auto_date, BoundingBox, Region};
 pub use error::{Error, Result};
 pub use gfs_dataset::{GfsDataset, GfsDatasetManager, GfsVariable};
+#[cfg(feature = "icon")]
+pub use icon_dataset::IconDatasetManager;
 pub use load::load;
 pub use ocean::{
     classify_enso, enso_summary, enso_summary_from_series, get_currents, get_godas,

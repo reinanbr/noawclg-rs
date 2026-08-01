@@ -39,6 +39,9 @@ jobs:
       - name: cargo clippy (grib feature)
         run: cargo clippy --all-targets --features grib -- -D warnings
 
+      - name: cargo clippy (full features)
+        run: cargo clippy --all-targets --features full -- -D warnings
+
   # ──────────────────────────────────────────────────────────────────────
   test:
     name: Test (${{ matrix.os }})
@@ -64,7 +67,7 @@ jobs:
 
   # ──────────────────────────────────────────────────────────────────────
   test-optional-features:
-    name: Test (grib + netcdf-io, Linux)
+    name: Test (grib + netcdf-io + icon, Linux)
     needs: lint
     runs-on: ubuntu-latest
     steps:
@@ -75,17 +78,28 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install libnetcdf (for the netcdf-io feature)
-        run: sudo apt-get update && sudo apt-get install -y libnetcdf-dev libhdf5-dev pkg-config
+      # Note: the `netcdf` crate vendors its own HDF5 build
+      # (`hdf5-metno-sys`) when no system libnetcdf is found, so this isn't
+      # strictly required to compile `netcdf-io`/`icon` — installing it
+      # anyway both speeds up the build and matches what a real deployment
+      # (e.g. this repo's example app's backend Dockerfile) would have.
+      # `cdo` is the `icon` feature's one hard runtime requirement (see
+      # `icon_dataset`); it isn't needed for this job's offline unit tests,
+      # only for the live tests in the `integration` job below, but
+      # installing it here too lets a local `cargo test --features full --
+      # --ignored` mirror this job exactly.
+      - name: Install libnetcdf + cdo
+        run: sudo apt-get update && sudo apt-get install -y libnetcdf-dev libhdf5-dev pkg-config cdo
 
       - name: cargo test --features full
         run: cargo test --all-targets --features full
 
   # ──────────────────────────────────────────────────────────────────────
-  # Real network calls against NOMADS. Opt-in: runs on pushes to main and
-  # on manual dispatch, never on pull requests from forks.
+  # Real network calls against NOMADS and DWD's open-data feed (+ a real
+  # `cdo` invocation for the ICON tests). Opt-in: runs on pushes to main
+  # and on manual dispatch, never on pull requests from forks.
   integration:
-    name: Integration tests (real NOMADS)
+    name: Integration tests (real NOMADS + DWD)
     needs: test
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -100,6 +114,13 @@ jobs:
       - name: cargo test -- --ignored
         run: cargo test -- --ignored
         continue-on-error: true # NOMADS availability is outside our control
+
+      - name: Install libnetcdf + cdo (for the ICON live tests below)
+        run: sudo apt-get update && sudo apt-get install -y libnetcdf-dev libhdf5-dev pkg-config cdo
+
+      - name: cargo test --features full -- --ignored
+        run: cargo test --features full -- --ignored
+        continue-on-error: true # DWD open-data availability is outside our control
 
   # ──────────────────────────────────────────────────────────────────────
   build:

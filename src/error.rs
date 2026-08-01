@@ -50,6 +50,12 @@ pub enum Error {
     #[error("this build was compiled without the '{0}' feature; rebuild with `--features {0}`")]
     FeatureDisabled(&'static str),
 
+    #[error("required system dependency '{0}' was not found on PATH; see the README's ICON section for install instructions")]
+    MissingSystemDependency(&'static str),
+
+    #[error("unknown ICON variable key(s): {0:?}. Available: t2m, d2m, r2, u10, v10, gust, prmsl, prate, tcc, cape")]
+    UnknownIconVariables(Vec<String>),
+
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
 

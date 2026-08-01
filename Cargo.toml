@@ -1,16 +1,16 @@
 [package]
 name = "noawclg"
-version = "2.3.1"
+version = "2.4.0"
 edition = "2021"
 rust-version = "1.80"
 authors = ["Reinan Br"]
-description = "Download, analyse and visualise NOAA atmospheric (GFS) and ocean (GODAS/ERSST) data. Rust port of the noawclg Python package."
+description = "Download, analyse and visualise NOAA atmospheric (GFS), DWD ICON global, and ocean (GODAS/ERSST) data. Rust port of the noawclg Python package."
 license = "GPL-3.0-or-later"
 readme = "README.md"
 repository = "https://github.com/reinanbr/noawclg-rs"
 homepage = "https://github.com/reinanbr/noawclg-rs"
 documentation = "https://docs.rs/noawclg"
-keywords = ["noaa", "weather", "gfs", "grib", "climate"]
+keywords = ["noaa", "weather", "gfs", "icon", "grib"]
 categories = ["science", "api-bindings"]
 exclude = ["/tests", "/.github"]
 
@@ -26,16 +26,31 @@ thiserror = "2"
 # jpeg2000/png decoders at build time).
 gribberish = { version = "1.6", optional = true }
 
-# Optional: OPeNDAP + NetCDF4 access for GODAS/ERSST and NetCDF persistence.
-# Requires a system libnetcdf (same requirement the Python lib has on
-# eccodes/libnetcdf) - see README.
+# Optional: OPeNDAP + NetCDF4 access for GODAS/ERSST and NetCDF persistence,
+# and (via the `icon` feature below) reading `cdo`'s decoded ICON output and
+# DWD's published SCRIP remap-weight files. Requires a system libnetcdf
+# (same requirement the Python lib has on eccodes/libnetcdf) - see README.
 netcdf = { version = "0.12", optional = true }
+
+# Optional: decompress DWD's bz2-compressed ICON GRIB2 downloads, and unpack
+# the .tar.bz2 remap-weights archive (see `icon_grid`). `bzip2` requires a
+# system libbz2 (dev headers) at build time; `tar` is pure Rust.
+bzip2 = { version = "0.4", optional = true }
+tar = { version = "0.4", optional = true }
 
 [features]
 default = []
 grib = ["dep:gribberish"]
 netcdf-io = ["dep:netcdf"]
-full = ["grib", "netcdf-io"]
+# DWD ICON global support. The native grid is unstructured/icosahedral,
+# which `gribberish` can't decode (only lat/lon and Lambert conformal grid
+# templates) — so this shells out to the system `cdo` tool to decode the raw
+# GRIB2 field into NetCDF, then applies DWD's own published nearest-neighbor
+# remap table (see `icon_grid`) in pure Rust to land it on a regular
+# lat/lon grid. Requires `cdo` on PATH at runtime (checked with a clear
+# error, not a build-time requirement) in addition to netcdf-io's libnetcdf.
+icon = ["netcdf-io", "dep:bzip2", "dep:tar"]
+full = ["grib", "netcdf-io", "icon"]
 
 [dev-dependencies]
 approx = "0.5"

@@ -8,35 +8,40 @@
 [![MSRV](https://img.shields.io/badge/MSRV-1.80-orange.svg)](Cargo.toml)
 
 Rust port of the [`noawclg`](https://pypi.org/project/noawclg/) Python
-package: download, analyse and visualise NOAA atmospheric (GFS) and ocean
-(GODAS / ERSST) data, no API key required.
+package: download, analyse and visualise NOAA atmospheric (GFS), DWD ICON
+global, and ocean (GODAS / ERSST) data, no API key required.
 
-This crate mirrors the Python package module-for-module. See
-[Module map](#module-map--python-equivalent) below for the exact
-correspondence.
+This crate mirrors the Python package module-for-module for everything
+through GFS/ocean support. ICON global support (`icon_catalog`,
+`icon_dataset`, `icon_grid`) is a Rust-only addition with no Python
+counterpart — see [Module map](#module-map--python-equivalent) below for
+the exact correspondence on the ported side.
 
 ## Feature flags
 
 | Feature | Adds | System requirement |
 |---|---|---|
 | *(default)* | catalogue, coordinate helpers, GFS GRIB2 download & caching, Zarr save/load, all ENSO/ocean math | none |
-| `grib` | Decodes downloaded GRIB2 files into datasets, via the pure-Rust [`gribberish`](https://crates.io/crates/gribberish) crate | none (builds a vendored JPEG2000/PNG decoder) |
-| `netcdf-io` | GODAS/ERSST access over OPeNDAP + NetCDF4 save/load, via the [`netcdf`](https://crates.io/crates/netcdf) crate | system `libnetcdf` built with DAP support (e.g. `apt install libnetcdf-dev`) |
-| `full` | both of the above | both of the above |
+| `grib` | Decodes downloaded GFS GRIB2 files into datasets, via the pure-Rust [`gribberish`](https://crates.io/crates/gribberish) crate | none (builds a vendored JPEG2000/PNG decoder) |
+| `netcdf-io` | GODAS/ERSST access over OPeNDAP + NetCDF4 save/load, via the [`netcdf`](https://crates.io/crates/netcdf) crate | none at build time in practice — the `netcdf` crate vendors and builds its own HDF5 (via `hdf5-metno-sys`) when no system `libnetcdf` is found. A system `libnetcdf` (e.g. `apt install libnetcdf-dev`), if present, is used instead and builds faster. |
+| `icon` | Downloads and decodes DWD ICON global forecasts into the same dataset shape GFS uses, via [`icon_dataset`]. Implies `netcdf-io`. | `cdo` on `PATH` **at runtime** (e.g. `apt install cdo`) — checked with a clear error, not a build-time requirement |
+| `full` | all of the above | all of the above |
 
-This split matters because, exactly like the Python library (which needs a
-system `eccodes`/`libnetcdf` install and documents it explicitly), the parts
-of this crate that talk to real weather/ocean data formats have a real
-system dependency. `cargo build`/`cargo test` with **no** features succeeds
-anywhere and exercises 100% of the pure logic (all 38 unit tests, matching
-the intent of the Python test suite, run without network or system libs).
+`cargo build`/`cargo test` with **no** features succeeds anywhere and
+exercises 100% of the pure logic (unit tests run without network or system
+libs). `netcdf-io`/`icon` build cleanly without any system package
+preinstalled (see above); `icon`'s live/integration tests additionally need
+`cdo` installed and network access to `opendata.dwd.de`.
 
 ```bash
 cargo build                        # pure logic only
 cargo build --features grib        # + GFS GRIB2 decoding
-cargo build --features netcdf-io   # + GODAS/ERSST/NetCDF (needs libnetcdf-dev)
+cargo build --features netcdf-io   # + GODAS/ERSST/NetCDF
+cargo build --features icon        # + DWD ICON global (needs `cdo` at runtime)
 cargo build --features full        # everything
 ```
+
+[`icon_dataset`]: https://docs.rs/noawclg/latest/noawclg/icon_dataset/index.html
 
 ## Data freshness: always resolve dates dynamically
 
@@ -177,6 +182,38 @@ println!("{:?}", gfs.get_keys());
 // Access the raw dataset
 let raw = gfs.dataset();
 ```
+
+### ICON global forecasts
+
+Needs the `icon` feature and `cdo` on `PATH` (`apt install cdo`, or your
+platform's equivalent). Same `GfsDataset` shape as GFS, same canonical
+variable keys — this really is meant to be a drop-in alternative model,
+not a separate API.
+
+```rust
+use noawclg::{GetNoaaData, IconDatasetManager};
+
+let (date, cycle) = noawclg::auto_date(1);
+let date_ymd = date.replace('/', ""); // IconDatasetManager wants YYYYMMDD, same as GfsDatasetManager::new
+
+let mgr = IconDatasetManager::new(&date_ymd, &cycle, "./icon_output")?;
+let ds = mgr.build_dataset(
+    &["t2m", "u10", "v10", "gust", "prmsl", "prate", "tcc", "cape"],
+    &noawclg::icon_catalog::default_hours(), // 0-78h @ 1h, 81-180h @ 3h
+)?;
+
+// Same `GetNoaaData::from_dataset` + `DatasetView` API as the GFS example
+// above works unchanged, since `ds` is a plain `GfsDataset`:
+let noaa = GetNoaaData::from_dataset(date_ymd, cycle, vec!["t2m".into()], ds.forecast_hour.clone(), ds);
+let view = noaa.get_data_from_point((-23.55, -46.63), None)?; // São Paulo
+```
+
+Why this needs `cdo`, what's derived vs. directly mapped (`prate` from
+`TOT_PREC`, `gust`'s hour-0 fallback), and which GFS fields have no ICON
+equivalent (the categorical precipitation-type flags) are documented on
+[`icon_dataset`] and [`icon_catalog`].
+
+[`icon_catalog`]: https://docs.rs/noawclg/latest/noawclg/icon_catalog/index.html
 
 ### Mathematical analysis examples
 
@@ -478,6 +515,9 @@ Not ported. See [Known limitations](#known-limitations--honesty-notes).
 | `query` | `noawclg/query.py` | `GetNoaaData`, Nominatim geocoding (plain HTTP, no `geopy` needed) |
 | `view` | `noawclg/view.py` | `DatasetView` |
 | `load` | `noawclg/load.py` | `load()` one-liner |
+| `icon_dataset` | *(none — Rust-only)* | `IconDatasetManager`: download/decode/remap DWD ICON global into a `GfsDataset`, needs `icon` |
+| `icon_catalog` | *(none — Rust-only)* | ICON→canonical variable table, ICON's own forecast-hour cadence |
+| `icon_grid` | *(none — Rust-only)* | DWD's published nearest-neighbor remap table (icosahedral → 0.25° world grid) |
 
 `plots.py` and `enso_forecast.py` in the Python repo live outside the
 `noawclg` package itself (they're top-level scripts, not part of the
@@ -496,11 +536,14 @@ Rust equivalent of `matplotlib`/`cartopy` plotting here.
   incorrectly, the likely culprit is level-matching in
   `grib_decode::match_level` (isobaric level units aren't 100% pinned down
   by gribberish's docs) or message ordering.
-- **`netcdf-io` feature** requires `libnetcdf-dev`/`libhdf5-dev` (or the
-  conda `netcdf4` package) to even compile, exactly like the Python
-  library needs `libeccodes-dev`/`netCDF4`. It was not build-tested in
-  this environment because those system packages aren't installed here
-  and installing them requires `sudo`.
+- **`netcdf-io`/`icon` features**: unlike the note above about `grib`,
+  these *were* build- and live-tested end-to-end in the environment this
+  was developed in, including `cargo clippy --features full -- -D
+  warnings` and real network calls to `opendata.dwd.de` + real `cdo`
+  invocations against the live 2026-08-01 00Z ICON run (see
+  `tests/icon_integration_tests.rs`) — a physical plausibility check
+  (temperature range checks, a São Paulo winter sanity check, non
+  -negative derived precip rate) passed, not just "it didn't crash."
 - **No plotting.** See above: out of scope by design, not an oversight.
 - **DataFrame equivalent.** Rust has no `pandas`/`xarray`. `TimeSeries` (a
   `Vec<NaiveDate>` + `Vec<f64>`) stands in for `pd.Series`;
@@ -510,21 +553,25 @@ Rust equivalent of `matplotlib`/`cartopy` plotting here.
 ## Testing
 
 ```bash
-cargo test                  # 112 tests total, no network/system deps
-cargo test --features grib  # same suite, type-checks the grib decode path too
-cargo clippy --all-targets
+cargo test                        # 139 tests (136 pass + 3 opt-in ignored), no network/system deps
+cargo test --features grib        # same suite, type-checks the grib decode path too
+cargo test --features full        # + 15 more (icon_catalog/icon_grid/icon_dataset unit tests)
+cargo test --features full -- --ignored   # + real network/cdo live tests (NOMADS + DWD)
+cargo clippy --all-targets --features full -- -D warnings
 ```
 
-Two layers, mirroring the Python `tests/` suite one file at a time:
+Two layers, mirroring the Python `tests/` suite one file at a time (plus
+the Rust-only `icon` module tests, which have no Python counterpart):
 
 | Rust | Ports (Python) | How |
 |---|---|---|
-| `src/**/*.rs` `#[cfg(test)] mod tests` (38 tests) | n/a | Unit tests with access to private internals (e.g. `cache_path`, `mask_and_convert`) |
+| `src/**/*.rs` `#[cfg(test)] mod tests` (38 tests; 53 with `--features full`) | n/a | Unit tests with access to private internals (e.g. `cache_path`, `mask_and_convert`, `icon_grid`'s remap gather) |
 | `tests/catalog_tests.rs` | `test_gfs_dataset.py::TestConstants` | Public API only |
 | `tests/gfs_dataset_tests.rs` | `test_gfs_dataset.py::TestInit/TestHelpers/TestDownloadHours/TestEdgeCases` | Public API + `common::FakeFetcher` |
 | `tests/query_view_tests.rs` | `test_main.py` | Public API + `GetNoaaData::from_dataset` |
 | `tests/ocean_tests.rs` | `test_ocean.py` (index math) | Public API only |
 | `tests/persistence_tests.rs` | `test_gfs_dataset.py::TestZarr` | Public API, real on-disk round trip |
+| `tests/icon_integration_tests.rs` | *(none — Rust-only)* | Real network + real `cdo`, opt-in (`--ignored`), needs `--features icon` |
 
 The Python suite mocks network calls with `unittest.mock.patch.object(mgr._session,
 "get", ...)`. The Rust port achieves the same thing with a real seam

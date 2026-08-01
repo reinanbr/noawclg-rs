@@ -12,6 +12,60 @@ sequence.
 
 ---
 
+## [2.4.0] - 2026-08-01
+
+### Added
+
+DWD ICON global forecast support — a Rust-only addition with no
+counterpart in the upstream Python `noawclg` package (everything through
+2.3.1 was a straight port; this is the first feature that isn't).
+
+- `icon_dataset::IconDatasetManager`: downloads, decodes and assembles
+  ICON global forecast fields into a `gfs_dataset::GfsDataset` — the same
+  container type GFS uses, with the same canonical variable keys
+  (`t2m`, `d2m`, `r2`, `u10`, `v10`, `gust`, `prmsl`, `prate`, `tcc`,
+  `cape`), so callers don't need model-specific code to use either.
+  - ICON global's native grid is unstructured/icosahedral, which
+    `gribberish` can't decode (only lat/lon and Lambert conformal grid
+    templates are implemented). Rather than hand-roll an unstructured
+    -grid GRIB2 decoder with no reference to validate against, this
+    shells out to the system `cdo` tool for the narrow job of decoding
+    raw GRIB2 into NetCDF (a format conversion, not a remap), then
+    applies DWD's own published nearest-neighbor mapping in plain,
+    unit-tested Rust (`icon_grid`) to land the result on a regular
+    0.25° world lat/lon grid.
+  - `prate` is derived from ICON's `TOT_PREC` (accumulated since
+    forecast hour 0) by backward-differencing consecutive requested
+    hours, since ICON doesn't publish an instantaneous rate field the
+    way GFS does.
+  - `gust` falls back to sustained wind speed (`hypot(u10, v10)`) for
+    hours where ICON's `VMAX_10M` isn't published (notably forecast
+    hour 0, which has no preceding averaging interval yet), so the
+    variable's hour axis never has a gap.
+  - GFS's categorical precipitation-type flags (`crain`/`csnow`/
+    `cfrzr`/`cicep`) have no honest ICON equivalent in the open-data
+    single-level feed and are left unmapped rather than approximated.
+- `icon_catalog`: the ICON→canonical variable table and ICON global's
+  own forecast-hour cadence (`default_hours`: 0-78 h @ 1 h, then
+  81-180 h @ 3 h).
+- `icon_grid::load_remap`: downloads (once, cached indefinitely) and
+  parses DWD's published `ICON_GLOBAL2WORLD_025_EASY` SCRIP remap-weight
+  archive into a gather table.
+- New `icon` feature flag (implies `netcdf-io`; also requires `cdo` on
+  `PATH` at runtime, checked with a clear `Error::MissingSystemDependency`
+  rather than a build-time requirement). `full` now includes it.
+
+### Testing
+- Unit tests for the ICON catalogue, URL building, SCRIP grid-file
+  parsing, and the remap gather/averaging logic — all offline, no `cdo`
+  or network required.
+- `tests/icon_integration_tests.rs`: opt-in (`cargo test --features icon
+  -- --ignored`) live tests against the real DWD open-data feed and a
+  real `cdo` invocation, verified during development against the live
+  2026-08-01 00Z run — including a physical plausibility check (São
+  Paulo winter 2 m temperature in range) and a check that derived
+  `prate` is never negative, not just "the code didn't panic."
+
 ## [2.3.1] - 2026-07-31
 
 ### Changed
