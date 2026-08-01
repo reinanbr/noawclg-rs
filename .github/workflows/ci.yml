@@ -39,6 +39,13 @@ jobs:
       - name: cargo clippy (grib feature)
         run: cargo clippy --all-targets --features grib -- -D warnings
 
+      # netcdf-sys has no vendored fallback unless the `static` feature is
+      # explicitly enabled (which this crate doesn't do) — it hard-requires
+      # a system libnetcdf via pkg-config/NETCDF_DIR, same as
+      # test-optional-features below.
+      - name: Install libnetcdf (for the netcdf-io/icon features)
+        run: sudo apt-get update && sudo apt-get install -y libnetcdf-dev libhdf5-dev pkg-config
+
       - name: cargo clippy (full features)
         run: cargo clippy --all-targets --features full -- -D warnings
 

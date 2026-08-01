@@ -23,21 +23,23 @@ the exact correspondence on the ported side.
 |---|---|---|
 | *(default)* | catalogue, coordinate helpers, GFS GRIB2 download & caching, Zarr save/load, all ENSO/ocean math | none |
 | `grib` | Decodes downloaded GFS GRIB2 files into datasets, via the pure-Rust [`gribberish`](https://crates.io/crates/gribberish) crate | none (builds a vendored JPEG2000/PNG decoder) |
-| `netcdf-io` | GODAS/ERSST access over OPeNDAP + NetCDF4 save/load, via the [`netcdf`](https://crates.io/crates/netcdf) crate | none at build time in practice — the `netcdf` crate vendors and builds its own HDF5 (via `hdf5-metno-sys`) when no system `libnetcdf` is found. A system `libnetcdf` (e.g. `apt install libnetcdf-dev`), if present, is used instead and builds faster. |
-| `icon` | Downloads and decodes DWD ICON global forecasts into the same dataset shape GFS uses, via [`icon_dataset`]. Implies `netcdf-io`. | `cdo` on `PATH` **at runtime** (e.g. `apt install cdo`) — checked with a clear error, not a build-time requirement |
+| `netcdf-io` | GODAS/ERSST access over OPeNDAP + NetCDF4 save/load, via the [`netcdf`](https://crates.io/crates/netcdf) crate | system `libnetcdf` built with DAP support (e.g. `apt install libnetcdf-dev libhdf5-dev`), discovered via `pkg-config`/`NETCDF_DIR`. `netcdf-sys` has no automatic vendored fallback — it only builds from source if the `static` feature is explicitly enabled on the `netcdf`/`netcdf-sys` crates, which this crate doesn't do. |
+| `icon` | Downloads and decodes DWD ICON global forecasts into the same dataset shape GFS uses, via [`icon_dataset`]. Implies `netcdf-io`. | Same `libnetcdf` requirement as `netcdf-io`, plus `cdo` on `PATH` **at runtime** (e.g. `apt install cdo`) — checked with a clear error, not a build-time requirement |
 | `full` | all of the above | all of the above |
 
 `cargo build`/`cargo test` with **no** features succeeds anywhere and
 exercises 100% of the pure logic (unit tests run without network or system
-libs). `netcdf-io`/`icon` build cleanly without any system package
-preinstalled (see above); `icon`'s live/integration tests additionally need
-`cdo` installed and network access to `opendata.dwd.de`.
+libs). `netcdf-io`/`icon` need `libnetcdf-dev` installed to even compile
+(see above — this bit us during development: a machine that happened to
+already have it installed masked the requirement until CI, which doesn't,
+caught it); `icon`'s live/integration tests additionally need `cdo`
+installed and network access to `opendata.dwd.de`.
 
 ```bash
 cargo build                        # pure logic only
 cargo build --features grib        # + GFS GRIB2 decoding
-cargo build --features netcdf-io   # + GODAS/ERSST/NetCDF
-cargo build --features icon        # + DWD ICON global (needs `cdo` at runtime)
+cargo build --features netcdf-io   # + GODAS/ERSST/NetCDF (needs libnetcdf-dev)
+cargo build --features icon        # + DWD ICON global (needs libnetcdf-dev + `cdo` at runtime)
 cargo build --features full        # everything
 ```
 
@@ -537,13 +539,17 @@ Rust equivalent of `matplotlib`/`cartopy` plotting here.
   `grib_decode::match_level` (isobaric level units aren't 100% pinned down
   by gribberish's docs) or message ordering.
 - **`netcdf-io`/`icon` features**: unlike the note above about `grib`,
-  these *were* build- and live-tested end-to-end in the environment this
-  was developed in, including `cargo clippy --features full -- -D
-  warnings` and real network calls to `opendata.dwd.de` + real `cdo`
-  invocations against the live 2026-08-01 00Z ICON run (see
-  `tests/icon_integration_tests.rs`) — a physical plausibility check
-  (temperature range checks, a São Paulo winter sanity check, non
-  -negative derived precip rate) passed, not just "it didn't crash."
+  these *were* build- and live-tested end-to-end, including real network
+  calls to `opendata.dwd.de` + real `cdo` invocations against the live
+  2026-08-01 00Z ICON run (see `tests/icon_integration_tests.rs`) — a
+  physical plausibility check (temperature range checks, a São Paulo
+  winter sanity check, non-negative derived precip rate) passed, not just
+  "it didn't crash." One real mistake this surfaced: the machine this was
+  developed on already had `libnetcdf-dev` installed for unrelated
+  reasons, which masked that it's a genuine, non-optional build
+  requirement (see the feature table above — `netcdf-sys` doesn't vendor
+  automatically) until CI's `lint` job, which didn't have it installed,
+  caught the gap. Fixed by installing it there too.
 - **No plotting.** See above: out of scope by design, not an oversight.
 - **DataFrame equivalent.** Rust has no `pandas`/`xarray`. `TimeSeries` (a
   `Vec<NaiveDate>` + `Vec<f64>`) stands in for `pd.Series`;
