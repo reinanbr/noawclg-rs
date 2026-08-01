@@ -148,11 +148,7 @@ pub fn load_remap(cache_dir: impl AsRef<Path>) -> Result<IconRemap> {
         ));
     }
     let num_links = dst_address.len();
-    let num_wgts = if num_links == 0 {
-        1
-    } else {
-        remap_matrix.len() / num_links
-    };
+    let num_wgts = remap_matrix.len().checked_div(num_links).unwrap_or(1);
 
     let mut gather: Vec<Vec<(u32, f64)>> = vec![Vec::new(); dst_len];
     for link in 0..num_links {
