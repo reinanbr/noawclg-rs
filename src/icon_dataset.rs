@@ -281,9 +281,19 @@ impl IconDatasetManager {
         // `sorted_hours`; `None` where that field wasn't published at that
         // hour).
         let mut by_field: HashMap<&str, Vec<Option<Vec<f64>>>> = HashMap::new();
+        let total_field_hours = needed_fields.len() * sorted_hours.len();
+        let mut done = 0usize;
         for &field in &needed_fields {
             let mut per_hour = Vec::with_capacity(sorted_hours.len());
             for &hour in &sorted_hours {
+                done += 1;
+                // ICON's cold path is one download + `cdo` decode per
+                // (field, hour) — hundreds of round trips with no other
+                // signal that it's progressing, not stuck. See
+                // `field_hour_on_world_grid`'s docs.
+                eprintln!(
+                    "[noawclg::icon] fetching {field} f{hour:03} ({done}/{total_field_hours})"
+                );
                 per_hour.push(self.field_hour_on_world_grid(field, hour, &remap)?);
             }
             by_field.insert(field, per_hour);
